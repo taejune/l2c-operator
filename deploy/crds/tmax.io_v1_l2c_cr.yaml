@@ -1,0 +1,8 @@
+apiVersion: tmax.io/v1
+kind: L2C
+metadata:
+  name: example-l2c
+spec:
+  projectName: my-weblogic-test
+  gitUrl: http://192.168.6.89:10080/taejune_ahn/my-weblogic-playground.git
+  accessCode: tmax@23
