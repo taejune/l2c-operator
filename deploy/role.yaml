@@ -71,6 +71,7 @@ rules:
   resources:
   - '*'
   - l2cs
+  - l2cruns
   verbs:
   - create
   - delete
