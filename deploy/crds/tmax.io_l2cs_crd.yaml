@@ -30,9 +30,89 @@ spec:
           type: object
         spec:
           description: L2CSpec defines the desired state of L2C
+          properties:
+            accessCode:
+              type: string
+            dbMigrate:
+              type: boolean
+            dbSourceIp:
+              pattern: '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'
+              type: string
+            dbSourcePassword:
+              type: string
+            dbSourcePort:
+              format: int32
+              type: integer
+            dbSourceSid:
+              type: string
+            dbSourceType:
+              enum:
+              - ORACLE
+              type: string
+            dbSourceUser:
+              type: string
+            dbTargetPassword:
+              type: string
+            dbTargetServiceType:
+              enum:
+              - ClusterIP
+              - LoadBalancer
+              - NodePort
+              type: string
+            dbTargetStorageSize:
+              type: string
+            dbTargetType:
+              enum:
+              - TIBERO
+              type: string
+            dbTargetUser:
+              type: string
+            gitRevision:
+              type: string
+            gitUrl:
+              type: string
+            imageRegistrySecretName:
+              type: string
+            imageUrl:
+              type: string
+            projectName:
+              type: string
+            wasPackageServerUrl:
+              type: string
+            wasPort:
+              format: int32
+              type: integer
+            wasServiceType:
+              enum:
+              - ClusterIP
+              - LoadBalancer
+              - NodePort
+              type: string
+            wasSourceType:
+              enum:
+              - wildfly
+              type: string
+            wasTargetType:
+              enum:
+              - jeus
+              type: string
+          required:
+          - accessCode
+          - gitRevision
+          - gitUrl
+          - imageUrl
+          - projectName
+          - wasPort
+          - wasSourceType
+          - wasTargetType
           type: object
         status:
           description: L2CStatus defines the observed state of L2C
+          properties:
+            message:
+              type: string
+            status:
+              type: string
           type: object
       type: object
   version: v1
