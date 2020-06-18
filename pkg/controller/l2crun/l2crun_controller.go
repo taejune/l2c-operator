@@ -2,9 +2,10 @@ package l2crun
 
 import (
 	"context"
+	"errors"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,7 +17,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	tmaxv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
+
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"tmax.io/l2c-operator/internal/schemes"
+	"tmax.io/l2c-operator/internal/utils"
+	l2cv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
 )
 
 var log = logf.Log.WithName("controller_l2crun")
@@ -46,16 +51,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource L2CRun
-	err = c.Watch(&source.Kind{Type: &tmaxv1.L2CRun{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &l2cv1.L2CRun{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner L2CRun
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	// Watch for changes to secondary resource Pods and requeue the owner L2cRunSH
+	err = c.Watch(&source.Kind{Type: &tektonv1.PipelineRun{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &tmaxv1.L2CRun{},
+		OwnerType:    &l2cv1.L2CRun{},
 	})
 	if err != nil {
 		return err
@@ -77,20 +81,15 @@ type ReconcileL2CRun struct {
 
 // Reconcile reads that state of the cluster for a L2CRun object and makes changes based on the state read
 // and what is in the L2CRun.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileL2CRun) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling L2CRun")
 
-	// Fetch the L2CRun instance
-	instance := &tmaxv1.L2CRun{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	// Fetch the L2CRun l2crun
+	l2crun := &l2cv1.L2CRun{}
+	err := r.client.Get(context.TODO(), request.NamespacedName, l2crun)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if kerrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -100,54 +99,309 @@ func (r *ReconcileL2CRun) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
-
-	// Set L2CRun instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
-		if err != nil {
+	// Fill unfilled status fields
+	if initStatusField(l2crun) {
+		if err = r.client.Status().Update(context.TODO(), l2crun); err != nil {
 			return reconcile.Result{}, err
 		}
+		return reconcile.Result{Requeue: true}, nil
+	}
 
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
-	} else if err != nil {
+	// Get L2c object referred by l2crun
+	l2c := &l2cv1.L2C{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2crun.Spec.L2cName, Namespace: l2crun.Namespace}, l2c)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			reqLogger.Error(err, "L2c not found")
+			if err = r.setStatus(l2crun, l2cv1.PhaseNull, l2cv1.StatusFailed, "L2c ["+l2crun.Spec.L2cName+"] not found"); err != nil {
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{}, nil
+		}
+		reqLogger.Error(err, "Unknown error getting L2c")
 		return reconcile.Result{}, err
 	}
 
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+	status := l2crun.Status.Status
+
+	// Succeeded / Failed --> Do nothing!
+	if status == l2cv1.StatusSucceeded || status == l2cv1.StatusFailed {
+		reqLogger.Info("Status is already " + string(status))
+		return reconcile.Result{}, nil
+	}
+
+	// Get PRs
+	analyzePr, cicdPr := schemes.PipelineRUn(l2crun, l2c)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: analyzePr.Name, Namespace: analyzePr.Namespace}, analyzePr)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			analyzePr = nil
+		} else {
+			if err = r.setStatus(l2crun, l2cv1.PhaseNull, l2cv1.StatusFailed, "Error getting PipelineRun status: "+err.Error()); err != nil {
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{}, err
+		}
+	}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: cicdPr.Name, Namespace: cicdPr.Namespace}, cicdPr)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			cicdPr = nil
+		} else {
+			if err = r.setStatus(l2crun, l2cv1.PhaseNull, l2cv1.StatusFailed, "Error getting PipelineRun status: "+err.Error()); err != nil {
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{}, err
+		}
+	}
+
+	// Pending
+	if status == l2cv1.StatusPending {
+		// If there exists PRs, unknown status
+		if analyzePr != nil || cicdPr != nil {
+			reqLogger.Error(errors.New("unknown status"), "Unknown status: pending but PipelineRun exists")
+			if err = r.setStatus(l2crun, l2cv1.PhaseNull, l2cv1.StatusFailed, "Unknown status: pending but PipelineRun exists"); err != nil {
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{}, nil
+		}
+
+		// Launch first pipelinerun
+		// Set status as Running first
+		time := metav1.Now()
+		l2crun.Status.StartTime = &time
+		if err = r.setStatus(l2crun, l2cv1.PhaseNull, l2cv1.StatusRunning, "Launched PipelineRun"); err != nil {
+			return reconcile.Result{}, err
+		}
+		// Create pipelinerun
+		analyzePr, _ = schemes.PipelineRUn(l2crun, l2c)
+		if err := controllerutil.SetControllerReference(l2crun, analyzePr, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: analyzePr.Name, Namespace: analyzePr.Namespace}, analyzePr); err != nil {
+			if err = r.setStatus(l2crun, l2cv1.PhaseNull, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// Running --> need to inspect pipelinerun (taskruns actually) status as well
+	if status != l2cv1.StatusRunning || (analyzePr == nil && cicdPr == nil) {
+		reqLogger.Error(errors.New("unknown status "+string(l2crun.Status.Status)), "Status is unknown")
+		return reconcile.Result{}, nil
+	}
+
+	taskRuns := map[string]*tektonv1.PipelineRunTaskRunStatus{}
+	if analyzePr != nil {
+		for taskRunName, status := range analyzePr.Status.TaskRuns {
+			taskRuns[taskRunName] = status
+		}
+	}
+	if cicdPr != nil {
+		for taskRunName, status := range cicdPr.Status.TaskRuns {
+			taskRuns[taskRunName] = status
+		}
+	}
+
+	// Update each phase status
+	failOccurred := false
+	allSucceeded := true
+
+	failedPhase := l2cv1.PhaseNull
+	currentRunning := l2cv1.PhaseNull
+
+	currentMessage := ""
+
+	for i, status := range l2crun.Status.Conditions {
+		phase := status.Type
+		taskRunName := l2cv1.PhaseTaskRuns[phase]
+		oldStatus := status.Status
+		oldMessage := status.Message
+
+		// Find taskrun
+		var tr *tektonv1.PipelineRunTaskRunStatus
+		for _, _tr := range taskRuns {
+			if _tr.PipelineTaskName == taskRunName {
+				tr = _tr
+			}
+		}
+		// If TaskRun found --> do jobs
+		if tr != nil && len(tr.Status.Conditions) > 0 {
+			trCond := tr.Status.Conditions[0]
+
+			// Set Message same as taskrun message
+			l2crun.Status.Conditions[i].Message = trCond.Message
+
+			switch trCond.Status {
+			// Status: True --> succeeded
+			case corev1.ConditionTrue:
+				l2crun.Status.Conditions[i].Status = l2cv1.StatusSucceeded
+				break
+			// Status: False --> failed
+			case corev1.ConditionFalse:
+				l2crun.Status.Conditions[i].Status = l2cv1.StatusFailed
+				failedPhase = phase
+				failOccurred = true
+				allSucceeded = false
+				break
+			// Status: Unknown --> running/pending - see Reason
+			case corev1.ConditionUnknown:
+				if trCond.Reason == "Running" {
+					l2crun.Status.Conditions[i].Status = l2cv1.StatusRunning
+				} else {
+					l2crun.Status.Conditions[i].Status = l2cv1.StatusPending
+					l2crun.Status.Conditions[i].Message = trCond.Reason + " : " + trCond.Message
+				}
+				currentRunning = phase
+				currentMessage = l2crun.Status.Conditions[i].Message
+				allSucceeded = false
+				break
+			default:
+				reqLogger.Error(errors.New("unknown taskrun status"), "Unknown taskrun status "+string(trCond.Status))
+			}
+
+			// Set lastTransitionTime
+			if oldStatus != l2crun.Status.Conditions[i].Status || oldMessage != l2crun.Status.Conditions[i].Message {
+				time := metav1.Now()
+				l2crun.Status.Conditions[i].LastTransitionTime = &time
+			}
+		} else {
+			// No desired taskrun found -> not launched yet
+			allSucceeded = false
+		}
+	}
+
+	// Update overall status
+	// failOccurred --> Failed
+	if failOccurred {
+		l2crun.Status.Phase = failedPhase
+		l2crun.Status.Status = l2cv1.StatusFailed
+		l2crun.Status.Message = "Phase [" + string(failedPhase) + "] failed"
+	}
+
+	// allSucceeded --> Succeeded
+	if allSucceeded {
+		l2crun.Status.Phase = l2cv1.PhaseNull
+		l2crun.Status.Status = l2cv1.StatusSucceeded
+		l2crun.Status.Message = "All phase completed successfully!"
+		time := metav1.Now()
+		l2crun.Status.CompletionTime = &time
+	}
+
+	// failOccurred is not true but if one or more PR is failed, set l2crun failed
+	if !failOccurred && analyzePr != nil && len(analyzePr.Status.Conditions) > 0 && analyzePr.Status.Conditions[0].Status == corev1.ConditionFalse {
+		failOccurred = true
+		allSucceeded = false
+		l2crun.Status.Phase = l2cv1.PhaseNull
+		l2crun.Status.Status = l2cv1.StatusFailed
+		l2crun.Status.Message = analyzePr.Status.Conditions[0].Message
+	}
+	if !failOccurred && cicdPr != nil && len(cicdPr.Status.Conditions) > 0 && cicdPr.Status.Conditions[0].Status == corev1.ConditionFalse {
+		failOccurred = true
+		allSucceeded = false
+		l2crun.Status.Phase = l2cv1.PhaseNull
+		l2crun.Status.Status = l2cv1.StatusFailed
+		l2crun.Status.Message = cicdPr.Status.Conditions[0].Message
+	}
+
+	// Still running ?
+	if !failOccurred && !allSucceeded {
+		l2crun.Status.Phase = currentRunning
+		l2crun.Status.Status = l2cv1.StatusRunning
+		l2crun.Status.Message = currentMessage
+
+		// Launch second pr when first one is done but second pr does not exist
+		if cicdPr == nil && analyzePr != nil && len(analyzePr.Status.Conditions) > 0 && analyzePr.Status.Conditions[0].Status == corev1.ConditionTrue {
+			_, cicdPr = schemes.PipelineRUn(l2crun, l2c)
+			if err := controllerutil.SetControllerReference(l2crun, cicdPr, r.scheme); err != nil {
+				return reconcile.Result{}, err
+			}
+			if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: cicdPr.Name, Namespace: cicdPr.Namespace}, cicdPr); err != nil {
+				if err = r.setStatus(l2crun, l2cv1.PhaseNull, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			}
+		}
+	}
+
+	// Save status!
+	if err := r.client.Status().Update(context.TODO(), l2crun); err != nil {
+		reqLogger.Error(err, "Unknown error updating L2cRun status")
+		return reconcile.Result{}, err
+	}
+
 	return reconcile.Result{}, nil
 }
+// Make sure the necessary fields are filled
+func initStatusField(cr *l2cv1.L2CRun) bool {
+	updated := false
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *tmaxv1.L2CRun) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
+	// Status
+	if cr.Status.Status == "" {
+		cr.Status.Status = l2cv1.StatusPending
+		updated = true
 	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
+
+	// Conditions - should be sorted in order!
+	phases := append([]l2cv1.Phase(nil), l2cv1.Phases...)
+	condUpdated := false
+	if len(cr.Status.Conditions) == len(phases) {
+		for curIdx, curCond := range cr.Status.Conditions {
+			if curCond.Type != phases[curIdx] {
+				condUpdated = true
+				break
+			}
+		}
+	} else {
+		condUpdated = true
 	}
+	if condUpdated {
+		updated = true
+		tobeInserted := phases
+
+		// Delete unnecessary fields
+		for curIdx, curCond := range cr.Status.Conditions {
+			found := -1
+			for desIdx, desCond := range tobeInserted {
+				if curCond.Type == desCond {
+					found = desIdx
+					tobeInserted = append(tobeInserted[:desIdx], tobeInserted[desIdx+1:]...)
+					desIdx = desIdx - 1
+				}
+			}
+			if found < 0 {
+				cr.Status.Conditions = append(cr.Status.Conditions[:curIdx], cr.Status.Conditions[curIdx+1:]...)
+				curIdx = curIdx - 1
+			}
+		}
+
+		// Fill necessary fields
+		for _, desCond := range tobeInserted {
+			updated = true
+
+			cr.Status.Conditions = append(cr.Status.Conditions, l2cv1.L2cRunSHCondition{
+				Type:   desCond,
+				Status: l2cv1.StatusPending,
+			})
+		}
+
+		// Sort in order TODO
+	}
+
+	return updated
+}
+
+func (r *ReconcileL2CRun) setStatus(cr *l2cv1.L2CRun, phase l2cv1.Phase, status l2cv1.Status, message string) error {
+	reqLogger := log.WithValues("Request.Namespace", cr.Namespace, "Request.Name", cr.Name)
+	cr.Status.Phase = phase
+	cr.Status.Status = status
+	cr.Status.Message = message
+	if err := r.client.Status().Update(context.TODO(), cr); err != nil {
+		reqLogger.Error(err, "Unknown error updating L2cRun status")
+		return err
+	}
+	return nil
 }

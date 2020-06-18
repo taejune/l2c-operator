@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	l2cv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -20,6 +19,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"tmax.io/l2c-operator/internal/schemes"
+	"tmax.io/l2c-operator/internal/utils"
+	l2cv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
 )
 
 var log = logf.Log.WithName("controller_l2c")
@@ -111,6 +114,121 @@ func (r *ReconcileL2C) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, err
 	}
 
+	// TODO: SonarQube Project
+	// TODO: If sonar project is ready (status.sonar-project-id exists) --> create all children objects
+
+	// L2c's children
+	// 1. Service (for WAS)
+	// 2. ConfigMap (for both analyze-migrate & ci-cd)
+	// 3. PipelineResource (git)
+	// 4. PipelineResource (image)
+	// 5. Pipeline (analyze-migrate)
+	// 6. Pipeline (ci-cd)
+	// 7. ServiceAccount
+	// 8. RoleBinding
+
+	// 1. Service (for WAS)
+	wasService := schemes.Service(l2c)
+	if err := controllerutil.SetControllerReference(l2c, wasService, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: wasService.Name, Namespace: wasService.Namespace}, wasService); err != nil {
+		if err = r.setStatus(l2c, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// 2. ConfigMap (for both analyze-migrate & ci-cd)
+	configMap, err := schemes.ConfigMap(l2c)
+	if err != nil {
+		reqLogger.Error(err, "Error generating ConfigMap data")
+		return reconcile.Result{}, err
+	}
+	if err := controllerutil.SetControllerReference(l2c, configMap, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: configMap.Name, Namespace: configMap.Namespace}, configMap); err != nil {
+		if err = r.setStatus(l2c, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// 3.4. PipelineResource
+	gitResource, imgResource := schemes.PipelineResource(l2c)
+
+	// 3. PipelineResource (git)
+	if err := controllerutil.SetControllerReference(l2c, gitResource, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: gitResource.Name, Namespace: gitResource.Namespace}, gitResource); err != nil {
+		if err = r.setStatus(l2c, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// 4. PipelineResource (image)
+	if err := controllerutil.SetControllerReference(l2c, imgResource, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: imgResource.Name, Namespace: imgResource.Namespace}, imgResource); err != nil {
+		if err = r.setStatus(l2c, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// 5.6. Pipeline
+	analyzeP, cicdP := schemes.Pipeline(l2c)
+
+	// 5. Pipeline (analyze-migrate)
+	if err := controllerutil.SetControllerReference(l2c, analyzeP, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: analyzeP.Name, Namespace: analyzeP.Namespace}, analyzeP); err != nil {
+		if err = r.setStatus(l2c, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// 6. Pipeline (ci-cd)
+	if err := controllerutil.SetControllerReference(l2c, cicdP, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: cicdP.Name, Namespace: cicdP.Namespace}, cicdP); err != nil {
+		if err = r.setStatus(l2c, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// 7. ServiceAccount
+	sa := schemes.ServiceAccount(l2c)
+	if err := controllerutil.SetControllerReference(l2c, sa, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: sa.Name, Namespace: sa.Namespace}, sa); err != nil {
+		if err = r.setStatus(l2c, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// 8. RoleBinding
+	rb := schemes.RoleBinding(l2c)
+	if err := controllerutil.SetControllerReference(l2c, rb, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	if err = utils.CheckAndCreateObject(r.client, types.NamespacedName{Name: rb.Name, Namespace: rb.Namespace}, rb); err != nil {
+		if err = r.setStatus(l2c, l2cv1.StatusFailed, "Error creating children: "+err.Error()); err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
 	// ------------------------------------------------------------------------
 	svc := &corev1.Service{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2c.Name, Namespace: l2c.Namespace}, svc)
@@ -161,6 +279,11 @@ func (r *ReconcileL2C) Reconcile(request reconcile.Request) (reconcile.Result, e
 			return reconcile.Result{}, err
 		}
 	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Set status as ready
+	if err = r.setStatus(l2c, l2cv1.StatusReady, "All child objects are ready"); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -321,4 +444,15 @@ func (r *ReconcileL2C) secretForL2C(cr *l2cv1.L2C) *corev1.Secret {
 	// Set L2C instance as the owner and controller
 	controllerutil.SetControllerReference(cr, secret, r.scheme)
 	return secret
+}
+
+func (r *ReconcileL2C) setStatus(cr *l2cv1.L2C, status l2cv1.Status, message string) error {
+	reqLogger := log.WithValues("Request.Namespace", cr.Namespace, "Request.Name", cr.Name)
+	cr.Status.Status = status
+	cr.Status.Message = message
+	if err := r.client.Status().Update(context.TODO(), cr); err != nil {
+		reqLogger.Error(err, "Unknown error updating status")
+		return err
+	}
+	return nil
 }
