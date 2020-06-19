@@ -15,9 +15,9 @@ type L2CSpec struct {
 
 	ProjectName string `json:"projectName"`
 
-	AccessCode  string `json:"accessCode"`
+	AccessCode string `json:"accessCode"`
 
-	GitUrl      string `json:"gitUrl"`
+	GitUrl string `json:"gitUrl"`
 
 	GitRevision string `json:"gitRevision"`
 

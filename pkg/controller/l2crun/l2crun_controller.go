@@ -335,6 +335,7 @@ func (r *ReconcileL2CRun) Reconcile(request reconcile.Request) (reconcile.Result
 
 	return reconcile.Result{}, nil
 }
+
 // Make sure the necessary fields are filled
 func initStatusField(cr *l2cv1.L2CRun) bool {
 	updated := false

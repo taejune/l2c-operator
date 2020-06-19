@@ -3,15 +3,17 @@ package utils
 import (
 	"context"
 	"errors"
-	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"reflect"
+
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 // Check first if the object exists
