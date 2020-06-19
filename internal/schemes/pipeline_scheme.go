@@ -1,7 +1,6 @@
 package schemes
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +46,7 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 							Kind: tektonv1.ClusterTaskKind,
 						},
 						Resources: &tektonv1.PipelineTaskResources{
-							Inputs: []v1beta1.PipelineTaskInputResource{
+							Inputs: []tektonv1.PipelineTaskInputResource{
 								{Name: "source", Resource: "source"},
 							},
 						},
@@ -125,10 +124,10 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 							{Name: "REGISTRY_SECRET_NAME", Value: tektonv1.ArrayOrString{StringVal: cr.Spec.ImageRegSecret, Type: tektonv1.ParamTypeString}},
 						},
 						Resources: &tektonv1.PipelineTaskResources{
-							Inputs: []v1beta1.PipelineTaskInputResource{
+							Inputs: []tektonv1.PipelineTaskInputResource{
 								{Name: "source", Resource: "source-repo"},
 							},
-							Outputs: []v1beta1.PipelineTaskOutputResource{
+							Outputs: []tektonv1.PipelineTaskOutputResource{
 								{Name: "image", Resource: "image"},
 							},
 						},
@@ -143,7 +142,7 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 							{Name: "image-url", Value: tektonv1.ArrayOrString{StringVal: "$(tasks." + l2cv1.TaskBuild + ".results.image-url)", Type: tektonv1.ParamTypeString}},
 						},
 						Resources: &tektonv1.PipelineTaskResources{
-							Inputs: []v1beta1.PipelineTaskInputResource{
+							Inputs: []tektonv1.PipelineTaskInputResource{
 								{Name: "scanned-image", Resource: "image", From: []string{l2cv1.TaskBuild}},
 							},
 						},
@@ -161,7 +160,7 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 							{Name: "deploy-env-json", Value: tektonv1.ArrayOrString{StringVal: "$(params.deploy-env-json)", Type: tektonv1.ParamTypeString}},
 						},
 						Resources: &tektonv1.PipelineTaskResources{
-							Inputs: []v1beta1.PipelineTaskInputResource{
+							Inputs: []tektonv1.PipelineTaskInputResource{
 								{Name: "image", Resource: "image"},
 							},
 						},
