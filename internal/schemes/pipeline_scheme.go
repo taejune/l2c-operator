@@ -1,15 +1,17 @@
 package schemes
 
 import (
-	"github.com/sunghyunkim3/l2c-operator/internal/utils"
-	tmaxv1 "github.com/sunghyunkim3/l2c-operator/pkg/apis/tmax/v1"
-	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"tmax.io/l2c-operator/internal/utils"
+	l2cv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
 )
 
-func Pipeline(cr *tmaxv1.L2cSH) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipeline) {
+func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipeline) {
 	analyzeName, cicdName := utils.GetPipelineName(cr)
 	return &tektonv1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{
@@ -39,7 +41,7 @@ func Pipeline(cr *tmaxv1.L2cSH) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipe
 				},
 				Tasks: []tektonv1.PipelineTask{
 					{
-						Name: tmaxv1.TaskAnalyze,
+						Name: l2cv1.TaskAnalyze,
 						TaskRef: &tektonv1.TaskRef{
 							Name: "sonar-scan-java-maven", // TODO: Change according to java/maven
 							Kind: tektonv1.ClusterTaskKind,
@@ -56,7 +58,7 @@ func Pipeline(cr *tmaxv1.L2cSH) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipe
 						},
 					},
 					{
-						Name: tmaxv1.TaskDbDeploy,
+						Name: l2cv1.TaskDbDeploy,
 						TaskRef: &tektonv1.TaskRef{
 							Name: "l2c-deploy-db",
 							Kind: tektonv1.ClusterTaskKind,
@@ -67,10 +69,10 @@ func Pipeline(cr *tmaxv1.L2cSH) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipe
 							{Name: "DB_TYPE", Value: tektonv1.ArrayOrString{StringVal: strings.ToUpper(cr.Spec.DbTargetType), Type: tektonv1.ParamTypeString}},
 							{Name: "DO_MIGRATE_DB", Value: tektonv1.ArrayOrString{StringVal: "$(params.DB_MIGRATE)", Type: tektonv1.ParamTypeString}},
 						},
-						RunAfter: []string{tmaxv1.TaskAnalyze},
+						RunAfter: []string{l2cv1.TaskAnalyze},
 					},
 					{
-						Name: tmaxv1.TaskDbMigrate,
+						Name: l2cv1.TaskDbMigrate,
 						TaskRef: &tektonv1.TaskRef{
 							Name: "tup-tibero", //TODO: Change according to target type
 							Kind: tektonv1.ClusterTaskKind,
@@ -90,7 +92,7 @@ func Pipeline(cr *tmaxv1.L2cSH) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipe
 							{Name: "d-port", Value: tektonv1.ArrayOrString{StringVal: "8629", Type: tektonv1.ParamTypeString}},
 							{Name: "d-ip", Value: tektonv1.ArrayOrString{StringVal: "$(params.L2C_NAME)-db-service", Type: tektonv1.ParamTypeString}},
 						},
-						RunAfter: []string{tmaxv1.TaskDbDeploy},
+						RunAfter: []string{l2cv1.TaskDbDeploy},
 					},
 				},
 			},
@@ -112,7 +114,7 @@ func Pipeline(cr *tmaxv1.L2cSH) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipe
 				},
 				Tasks: []tektonv1.PipelineTask{
 					{
-						Name: tmaxv1.TaskBuild,
+						Name: l2cv1.TaskBuild,
 						TaskRef: &tektonv1.TaskRef{
 							Name: "s2i",
 							Kind: tektonv1.ClusterTaskKind,
@@ -132,29 +134,29 @@ func Pipeline(cr *tmaxv1.L2cSH) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipe
 						},
 					},
 					{
-						Name: tmaxv1.TaskTest,
+						Name: l2cv1.TaskTest,
 						TaskRef: &tektonv1.TaskRef{
 							Name: "analyze-image-vulnerabilities",
 							Kind: tektonv1.ClusterTaskKind,
 						},
 						Params: []tektonv1.Param{
-							{Name: "image-url", Value: tektonv1.ArrayOrString{StringVal: "$(tasks." + tmaxv1.TaskBuild + ".results.image-url)", Type: tektonv1.ParamTypeString}},
+							{Name: "image-url", Value: tektonv1.ArrayOrString{StringVal: "$(tasks." + l2cv1.TaskBuild + ".results.image-url)", Type: tektonv1.ParamTypeString}},
 						},
 						Resources: &tektonv1.PipelineTaskResources{
 							Inputs: []v1beta1.PipelineTaskInputResource{
-								{Name: "scanned-image", Resource: "image", From: []string{tmaxv1.TaskBuild}},
+								{Name: "scanned-image", Resource: "image", From: []string{l2cv1.TaskBuild}},
 							},
 						},
 					},
 					{
-						Name: tmaxv1.TaskDeploy,
+						Name: l2cv1.TaskDeploy,
 						TaskRef: &tektonv1.TaskRef{
 							Name: "generate-and-deploy-using-kubectl",
 							Kind: tektonv1.ClusterTaskKind,
 						},
 						Params: []tektonv1.Param{
 							{Name: "app-name", Value: tektonv1.ArrayOrString{StringVal: "$(params.app-name)", Type: tektonv1.ParamTypeString}},
-							{Name: "image-url", Value: tektonv1.ArrayOrString{StringVal: "$(tasks." + tmaxv1.TaskBuild + ".results.image-url)", Type: tektonv1.ParamTypeString}},
+							{Name: "image-url", Value: tektonv1.ArrayOrString{StringVal: "$(tasks." + l2cv1.TaskBuild + ".results.image-url)", Type: tektonv1.ParamTypeString}},
 							{Name: "deploy-cfg-name", Value: tektonv1.ArrayOrString{StringVal: "$(params.deploy-cfg-name)", Type: tektonv1.ParamTypeString}},
 							{Name: "deploy-env-json", Value: tektonv1.ArrayOrString{StringVal: "$(params.deploy-env-json)", Type: tektonv1.ParamTypeString}},
 						},
@@ -163,7 +165,7 @@ func Pipeline(cr *tmaxv1.L2cSH) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipe
 								{Name: "image", Resource: "image"},
 							},
 						},
-						RunAfter: []string{tmaxv1.TaskTest},
+						RunAfter: []string{l2cv1.TaskTest},
 					},
 				},
 			},
