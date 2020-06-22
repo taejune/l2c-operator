@@ -9,7 +9,7 @@ import (
 	l2cv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
 )
 
-func PipelineRUn(l2cRun *l2cv1.L2CRun, l2c *l2cv1.L2C) (analyze *tektonv1.PipelineRun, cicd *tektonv1.PipelineRun) {
+func PipelineRun(l2cRun *l2cv1.L2CRun, l2c *l2cv1.L2C) (analyze *tektonv1.PipelineRun, cicd *tektonv1.PipelineRun) {
 	analyzeName, cicdName := utils.GetPipelineRunName(l2cRun)
 	analyzeP, cicdP := utils.GetPipelineName(l2c)
 	gitResName, imgResName := utils.GetPipelineResourceName(l2c)
