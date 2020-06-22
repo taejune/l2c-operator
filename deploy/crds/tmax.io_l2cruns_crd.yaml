@@ -30,9 +30,42 @@ spec:
           type: object
         spec:
           description: L2CRunSpec defines the desired state of L2CRun
+          properties:
+            l2cName:
+              description: L2cName is the object name of L2c to be referred
+              type: string
+          required:
+          - l2cName
           type: object
         status:
           description: L2CRunStatus defines the observed state of L2CRun
+          properties:
+            completionTime:
+              format: date-time
+              type: string
+            conditions:
+              items:
+                properties:
+                  lastTransitionTime:
+                    format: date-time
+                    type: string
+                  message:
+                    type: string
+                  status:
+                    type: string
+                  type:
+                    type: string
+                type: object
+              type: array
+            message:
+              type: string
+            phase:
+              type: string
+            startTime:
+              format: date-time
+              type: string
+            status:
+              type: string
           type: object
       type: object
   version: v1

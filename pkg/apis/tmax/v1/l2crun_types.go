@@ -12,6 +12,9 @@ type L2CRunSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+
+	// L2cName is the object name of L2c to be referred
+	L2cName string `json:"l2cName"`
 }
 
 // L2CRunStatus defines the observed state of L2CRun
@@ -19,6 +22,38 @@ type L2CRunStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+
+	//
+	StartTime *metav1.Time `json:"startTime,omitempty"`
+
+	//
+	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
+
+	//
+	Conditions []L2cRunSHCondition `json:"conditions,omitempty"`
+
+	//
+	Phase Phase `json:"phase,omitempty"`
+
+	//
+	Status Status `json:"status,omitempty"`
+
+	//
+	Message string `json:"message,omitempty"`
+}
+
+type L2cRunSHCondition struct {
+	//
+	Type Phase `json:"type,omitempty"`
+
+	//
+	Status Status `json:"status,omitempty"`
+
+	//
+	Message string `json:"message,omitempty"`
+
+	//
+	LastTransitionTime *metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
