@@ -131,7 +131,7 @@ func (r *ReconcileL2CRun) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	// Get PRs
-	analyzePr, cicdPr := schemes.PipelineRUn(l2crun, l2c)
+	analyzePr, cicdPr := schemes.PipelineRun(l2crun, l2c)
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: analyzePr.Name, Namespace: analyzePr.Namespace}, analyzePr)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
@@ -174,7 +174,7 @@ func (r *ReconcileL2CRun) Reconcile(request reconcile.Request) (reconcile.Result
 			return reconcile.Result{}, err
 		}
 		// Create pipelinerun
-		analyzePr, _ = schemes.PipelineRUn(l2crun, l2c)
+		analyzePr, _ = schemes.PipelineRun(l2crun, l2c)
 		if err := controllerutil.SetControllerReference(l2crun, analyzePr, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -314,7 +314,7 @@ func (r *ReconcileL2CRun) Reconcile(request reconcile.Request) (reconcile.Result
 
 		// Launch second pr when first one is done but second pr does not exist
 		if cicdPr == nil && analyzePr != nil && len(analyzePr.Status.Conditions) > 0 && analyzePr.Status.Conditions[0].Status == corev1.ConditionTrue {
-			_, cicdPr = schemes.PipelineRUn(l2crun, l2c)
+			_, cicdPr = schemes.PipelineRun(l2crun, l2c)
 			if err := controllerutil.SetControllerReference(l2crun, cicdPr, r.scheme); err != nil {
 				return reconcile.Result{}, err
 			}
