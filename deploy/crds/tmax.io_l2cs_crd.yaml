@@ -35,8 +35,8 @@ spec:
               type: string
             dbMigrate:
               type: boolean
-            dbSourceIp:
-              pattern: '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'
+            dbSourceHost:
+              pattern: (([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])
               type: string
             dbSourcePassword:
               type: string

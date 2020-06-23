@@ -42,7 +42,7 @@ func PipelineRun(l2cRun *l2cv1.L2CRun, l2c *l2cv1.L2C) (analyze *tektonv1.Pipeli
 					{Name: "SONAR_PROJECT_ID", Value: tektonv1.ArrayOrString{StringVal: l2c.Spec.ProjectName, Type: tektonv1.ParamTypeString}},
 					{Name: "DB_MIGRATE", Value: tektonv1.ArrayOrString{StringVal: doDbMigrate, Type: tektonv1.ParamTypeString}},
 					{Name: "DB_FROM", Value: tektonv1.ArrayOrString{StringVal: l2c.Spec.DbSourceType, Type: tektonv1.ParamTypeString}},
-					{Name: "DB_FROM_IP", Value: tektonv1.ArrayOrString{StringVal: l2c.Spec.DbSourceIp, Type: tektonv1.ParamTypeString}},
+					{Name: "DB_FROM_IP", Value: tektonv1.ArrayOrString{StringVal: l2c.Spec.DbSourceHost, Type: tektonv1.ParamTypeString}},
 					{Name: "DB_FROM_PORT", Value: tektonv1.ArrayOrString{StringVal: fmt.Sprint(l2c.Spec.DbSourcePort), Type: tektonv1.ParamTypeString}},
 					{Name: "DB_FROM_USER", Value: tektonv1.ArrayOrString{StringVal: l2c.Spec.DbSourceUser, Type: tektonv1.ParamTypeString}},
 					{Name: "DB_FROM_PASSWORD", Value: tektonv1.ArrayOrString{StringVal: l2c.Spec.DbSourcePassword, Type: tektonv1.ParamTypeString}},

@@ -55,8 +55,8 @@ type L2CSpec struct {
 	// +kubebuilder:validation:Enum=ORACLE
 	DbSourceType string `json:"dbSourceType,omitempty"`
 
-	// +kubebuilder:validation:Pattern=[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*
-	DbSourceIp string `json:"dbSourceIp,omitempty"`
+	// +kubebuilder:validation:Pattern=(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])
+	DbSourceHost string `json:"dbSourceHost,omitempty"`
 
 	DbSourcePort int32 `json:"dbSourcePort,omitempty"`
 
