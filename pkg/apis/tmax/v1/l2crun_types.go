@@ -61,6 +61,10 @@ type L2cRunSHCondition struct {
 // L2CRun is the Schema for the l2cruns API
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=l2cruns,scope=Namespaced
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status",description="Current status of L2cRun"
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Currently running phase of L2cRun"
+// +kubebuilder:printcolumn:name="StartTime",type="date",JSONPath=".status.startTime",description="Time started the L2cRun"
+// +kubebuilder:printcolumn:name="CompletionTime",type="date",JSONPath=".status.completionTime",description="Time completed the L2cRun"
 type L2CRun struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
