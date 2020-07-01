@@ -22,7 +22,7 @@ spec:
   dbTargetUser: TMAX
   dbTargetPassword: TMAX
   dbSourceType: ORACLE
-  dbSourceIp: '192.168.6.129'
+  dbSourceHost: '192.168.6.129'
   dbSourcePort: 49161
   dbSourceUser: system
   dbSourcePassword: oracle
