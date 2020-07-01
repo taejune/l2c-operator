@@ -1,19 +1,14 @@
 package v1
 
 const (
-	TaskAnalyze   = "task-analyze"
-	TaskDbDeploy  = "task-db-deploy"
-	TaskDbMigrate = "task-db-migrate"
-	TaskBuild     = "task-build"
-	TaskTest      = "task-test"
-	TaskDeploy    = "task-deploy"
-
-	TaskRunAnalyze   = TaskAnalyze
-	TaskRunDbDeploy  = TaskDbDeploy
-	TaskRunDbMigrate = TaskDbMigrate
-	TaskRunBuild     = TaskBuild
-	TaskRunTest      = TaskTest
-	TaskRunDeploy    = TaskDeploy
+	TaskAnalyze          = "task-analyze"
+	TaskAnalyzeJavaMaven = "sonar-scan-java-maven"
+	TaskDbDeploy         = "l2c-deploy-db"
+	TaskDbMigrate        = "task-db-migrate"
+	TaskDbMigrateTibero  = "tup-tibero"
+	TaskBuild            = "s2i"
+	TaskTest             = "analyze-image-vulnerabilities"
+	TaskDeploy           = "generate-and-deploy-using-kubectl"
 )
 
 const (

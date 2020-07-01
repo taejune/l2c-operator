@@ -40,9 +40,9 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 				},
 				Tasks: []tektonv1.PipelineTask{
 					{
-						Name: l2cv1.TaskAnalyze,
+						Name: string(l2cv1.PhaseAnalyze),
 						TaskRef: &tektonv1.TaskRef{
-							Name: "sonar-scan-java-maven", // TODO: Change according to java/maven
+							Name: l2cv1.TaskAnalyzeJavaMaven, // TODO: Change according to java/maven
 							Kind: tektonv1.ClusterTaskKind,
 						},
 						Resources: &tektonv1.PipelineTaskResources{
@@ -57,9 +57,9 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 						},
 					},
 					{
-						Name: l2cv1.TaskDbDeploy,
+						Name: string(l2cv1.PhaseDbDeploy),
 						TaskRef: &tektonv1.TaskRef{
-							Name: "l2c-deploy-db",
+							Name: l2cv1.TaskDbDeploy, //TODO: Change according to target type
 							Kind: tektonv1.ClusterTaskKind,
 						},
 						Params: []tektonv1.Param{
@@ -68,12 +68,12 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 							{Name: "DB_TYPE", Value: tektonv1.ArrayOrString{StringVal: strings.ToUpper(cr.Spec.DbTargetType), Type: tektonv1.ParamTypeString}},
 							{Name: "DO_MIGRATE_DB", Value: tektonv1.ArrayOrString{StringVal: "$(params.DB_MIGRATE)", Type: tektonv1.ParamTypeString}},
 						},
-						RunAfter: []string{l2cv1.TaskAnalyze},
+						RunAfter: []string{string(l2cv1.PhaseAnalyze)},
 					},
 					{
-						Name: l2cv1.TaskDbMigrate,
+						Name: string(l2cv1.PhaseDbMigrate),
 						TaskRef: &tektonv1.TaskRef{
-							Name: "tup-tibero", //TODO: Change according to target type
+							Name: l2cv1.TaskDbMigrateTibero, //TODO: Change according to target type
 							Kind: tektonv1.ClusterTaskKind,
 						},
 						Params: []tektonv1.Param{
@@ -91,7 +91,7 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 							{Name: "d-port", Value: tektonv1.ArrayOrString{StringVal: "8629", Type: tektonv1.ParamTypeString}},
 							{Name: "d-ip", Value: tektonv1.ArrayOrString{StringVal: "$(params.L2C_NAME)-db-service", Type: tektonv1.ParamTypeString}},
 						},
-						RunAfter: []string{l2cv1.TaskDbDeploy},
+						RunAfter: []string{string(l2cv1.PhaseDbDeploy)},
 					},
 				},
 			},
@@ -113,9 +113,9 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 				},
 				Tasks: []tektonv1.PipelineTask{
 					{
-						Name: l2cv1.TaskBuild,
+						Name: string(l2cv1.PhaseBuild),
 						TaskRef: &tektonv1.TaskRef{
-							Name: "s2i",
+							Name: l2cv1.TaskBuild,
 							Kind: tektonv1.ClusterTaskKind,
 						},
 						Params: []tektonv1.Param{
@@ -133,29 +133,29 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 						},
 					},
 					{
-						Name: l2cv1.TaskTest,
+						Name: string(l2cv1.PhaseTest),
 						TaskRef: &tektonv1.TaskRef{
-							Name: "analyze-image-vulnerabilities",
+							Name: l2cv1.TaskTest,
 							Kind: tektonv1.ClusterTaskKind,
 						},
 						Params: []tektonv1.Param{
-							{Name: "image-url", Value: tektonv1.ArrayOrString{StringVal: "$(tasks." + l2cv1.TaskBuild + ".results.image-url)", Type: tektonv1.ParamTypeString}},
+							{Name: "image-url", Value: tektonv1.ArrayOrString{StringVal: "$(tasks." + string(l2cv1.PhaseBuild) + ".results.image-url)", Type: tektonv1.ParamTypeString}},
 						},
 						Resources: &tektonv1.PipelineTaskResources{
 							Inputs: []tektonv1.PipelineTaskInputResource{
-								{Name: "scanned-image", Resource: "image", From: []string{l2cv1.TaskBuild}},
+								{Name: "scanned-image", Resource: "image", From: []string{string(l2cv1.PhaseBuild)}},
 							},
 						},
 					},
 					{
-						Name: l2cv1.TaskDeploy,
+						Name: string(l2cv1.PhaseDeploy),
 						TaskRef: &tektonv1.TaskRef{
-							Name: "generate-and-deploy-using-kubectl",
+							Name: l2cv1.TaskDeploy,
 							Kind: tektonv1.ClusterTaskKind,
 						},
 						Params: []tektonv1.Param{
 							{Name: "app-name", Value: tektonv1.ArrayOrString{StringVal: "$(params.app-name)", Type: tektonv1.ParamTypeString}},
-							{Name: "image-url", Value: tektonv1.ArrayOrString{StringVal: "$(tasks." + l2cv1.TaskBuild + ".results.image-url)", Type: tektonv1.ParamTypeString}},
+							{Name: "image-url", Value: tektonv1.ArrayOrString{StringVal: "$(tasks." + string(l2cv1.PhaseBuild) + ".results.image-url)", Type: tektonv1.ParamTypeString}},
 							{Name: "deploy-cfg-name", Value: tektonv1.ArrayOrString{StringVal: "$(params.deploy-cfg-name)", Type: tektonv1.ParamTypeString}},
 							{Name: "deploy-env-json", Value: tektonv1.ArrayOrString{StringVal: "$(params.deploy-env-json)", Type: tektonv1.ParamTypeString}},
 						},
@@ -164,7 +164,7 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 								{Name: "image", Resource: "image"},
 							},
 						},
-						RunAfter: []string{l2cv1.TaskTest},
+						RunAfter: []string{string(l2cv1.PhaseTest)},
 					},
 				},
 			},
