@@ -216,7 +216,7 @@ func (r *ReconcileL2CRun) Reconcile(request reconcile.Request) (reconcile.Result
 
 	for i, status := range l2crun.Status.Conditions {
 		phase := status.Type
-		taskRunName := l2cv1.PhaseTaskRuns[phase]
+		taskRunName := string(phase)
 		oldStatus := status.Status
 		oldMessage := status.Message
 
