@@ -15,23 +15,15 @@ type Phase string
 
 const (
 	PhaseNull      = Phase("")
-	PhaseAnalyze   = Phase("Analyze")
-	PhaseDbDeploy  = Phase("DB-Deploy")
-	PhaseDbMigrate = Phase("DB-Migrate")
-	PhaseBuild     = Phase("Build")
-	PhaseTest      = Phase("Test")
-	PhaseDeploy    = Phase("Deploy")
+	PhaseAnalyze   = Phase("analyze")
+	PhaseDbDeploy  = Phase("db-deploy")
+	PhaseDbMigrate = Phase("db-migrate")
+	PhaseBuild     = Phase("build")
+	PhaseTest      = Phase("test")
+	PhaseDeploy    = Phase("deploy")
 )
 
 var Phases = []Phase{PhaseAnalyze, PhaseDbDeploy, PhaseDbMigrate, PhaseBuild, PhaseTest, PhaseDeploy}
-var PhaseTaskRuns = map[Phase]string{
-	PhaseAnalyze:   TaskRunAnalyze,
-	PhaseDbDeploy:  TaskRunDbDeploy,
-	PhaseDbMigrate: TaskRunDbMigrate,
-	PhaseBuild:     TaskRunBuild,
-	PhaseTest:      TaskRunTest,
-	PhaseDeploy:    TaskRunDeploy,
-}
 
 type PhaseTaskRunMap struct {
 	Phase       Phase
