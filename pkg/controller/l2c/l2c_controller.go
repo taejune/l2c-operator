@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"tmax.io/l2c-operator/internal/schemes"
 	"tmax.io/l2c-operator/internal/utils"
 	l2cv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
@@ -68,6 +69,30 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &l2cv1.L2C{},
+	})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &l2cv1.L2C{},
+	})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &tektonv1.Pipeline{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &l2cv1.L2C{},
+	})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &tektonv1.PipelineResource{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &l2cv1.L2C{},
 	})
