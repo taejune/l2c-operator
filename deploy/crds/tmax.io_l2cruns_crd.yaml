@@ -3,6 +3,23 @@ kind: CustomResourceDefinition
 metadata:
   name: l2cruns.tmax.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.status
+    description: Current status of L2cRun
+    name: Status
+    type: string
+  - JSONPath: .status.phase
+    description: Currently running phase of L2cRun
+    name: Phase
+    type: string
+  - JSONPath: .status.startTime
+    description: Time started the L2cRun
+    name: StartTime
+    type: date
+  - JSONPath: .status.completionTime
+    description: Time completed the L2cRun
+    name: CompletionTime
+    type: date
   group: tmax.io
   names:
     kind: L2CRun
