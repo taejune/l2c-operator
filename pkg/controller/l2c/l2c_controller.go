@@ -24,6 +24,10 @@ import (
 	"tmax.io/l2c-operator/internal/schemes"
 	"tmax.io/l2c-operator/internal/utils"
 	l2cv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
+
+	sonarapis "github.com/taejune/sonar-client-go/apis"
+	sonarerrors "github.com/taejune/sonar-client-go/errors"
+	sonarschemes "github.com/taejune/sonar-client-go/schemes"
 )
 
 var log = logf.Log.WithName("controller_l2c")
@@ -141,6 +145,15 @@ func (r *ReconcileL2C) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	// TODO: SonarQube Project
 	// TODO: If sonar project is ready (status.sonar-project-id exists) --> create all children objects
+
+	proj := sonarschemes.NewProject(l2c.Spec.ProjectName, l2c.Spec.ProjectName, l2c.Spec.GitUrl, sonarschemes.JAVA, sonarschemes.MAVEN)
+	err = sonarapis.CreateProject(proj)
+	if err != nil {
+		if !sonarerrors.IsAlreadyExists(err) {
+			reqLogger.Error(err, "Failed to create project not caused by already exist")
+			return reconcile.Result{}, err
+		}
+	}
 
 	// L2c's children
 	// 1. Service (for WAS)

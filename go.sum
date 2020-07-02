@@ -1076,6 +1076,8 @@ github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81P
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/syndtr/gocapability v0.0.0-20170704070218-db04d3cc01c8/go.mod h1:hkRG7XYTFWNJGYcbNJQlaLq0fg1yr4J4t/NcTQtrfww=
+github.com/taejune/sonar-client-go v0.0.2 h1:cpD6Xw/g0X/fiGza9YH/zBtOx238kR4OPThV8AOdEDk=
+github.com/taejune/sonar-client-go v0.0.2/go.mod h1:C1XdCG7tPD9s4vueWcNp/6SvyEzQ7h3tGcz1qEzLj40=
 github.com/tektoncd/pipeline v0.8.0/go.mod h1:IZzJdiX9EqEMuUcgdnElozdYYRh0/ZRC+NKMLj1K3Yw=
 github.com/tektoncd/pipeline v0.10.1/go.mod h1:D2X0exT46zYx95BU7ByM8+erpjoN7thmUBvlKThOszU=
 github.com/tektoncd/pipeline v0.13.2 h1:QbjYzVplDJZB/us5OPaAS3rMpYQLJ6DKXXYFKvYhA+U=
