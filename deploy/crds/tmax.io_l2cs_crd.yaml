@@ -3,6 +3,28 @@ kind: CustomResourceDefinition
 metadata:
   name: l2cs.tmax.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.status
+    name: Status
+    type: string
+  - JSONPath: .spec.gitUrl
+    name: Git
+    type: string
+  - JSONPath: .spec.wasSourceType
+    name: SrcWAS
+    type: string
+  - JSONPath: .spec.wasTargetType
+    name: DstWAS
+    type: string
+  - JSONPath: .spec.dbSourceType
+    name: SrcDB
+    type: string
+  - JSONPath: .spec.dbTargetType
+    name: DstDB
+    type: string
+  - JSONPath: .status.message
+    name: Message
+    type: string
   group: tmax.io
   names:
     kind: L2C
