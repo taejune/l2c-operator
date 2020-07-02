@@ -20,7 +20,7 @@ clean:
 .PHONY: gen
 gen:
 	$(SDK) generate k8s
-	$(SDK) generate crds --crd-version v1
+	$(SDK) generate crds
 
 
 .PHONY: build build-operator
