@@ -3,6 +3,26 @@ kind: L2C
 metadata:
   name: example-l2c
 spec:
-  projectName: my-weblogic-test
-  gitUrl: http://192.168.6.89:10080/taejune_ahn/my-weblogic-playground.git
-  accessCode: tmax@23
+  projectName: wildfly-maven-sample-app
+  accessCode: ''
+  gitUrl: https://github.com/sunghyunkim3/TomcatMavenApp
+  gitRevision: master
+  imageUrl: 172.22.11.2:30500/wildfly-maven-sample-app
+  imageRegistrySecretName: ''
+  wasSourceType: wildfly
+  wasTargetType: jeus
+  wasPort: 8808
+  wasServiceType: LoadBalancer
+  wasPackageServerUrl: ''
+  dbMigrate: true
+  dbTargetType: TIBERO
+  dbTargetStorageSize: 10Gi
+  dbTargetServiceType: ClusterIP
+  dbTargetUser: TMAX
+  dbTargetPassword: TMAX
+  dbSourceType: ORACLE
+  dbSourceHost: '192.168.6.129'
+  dbSourcePort: 49161
+  dbSourceUser: system
+  dbSourcePassword: oracle
+  dbSourceSid: XE

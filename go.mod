@@ -6,6 +6,7 @@ require (
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/operator-framework/operator-sdk v0.17.1
 	github.com/spf13/pflag v1.0.5
+	github.com/taejune/sonar-client-go v0.0.2
 	github.com/tektoncd/pipeline v0.13.2
 	k8s.io/api v0.17.6
 	k8s.io/apimachinery v0.17.6

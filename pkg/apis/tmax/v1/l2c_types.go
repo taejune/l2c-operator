@@ -85,6 +85,13 @@ type L2CStatus struct {
 // L2C is the Schema for the l2cs API
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=l2cs,scope=Namespaced
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
+// +kubebuilder:printcolumn:name="Git",type=string,JSONPath=`.spec.gitUrl`
+// +kubebuilder:printcolumn:name="SrcWAS",type=string,JSONPath=`.spec.wasSourceType`
+// +kubebuilder:printcolumn:name="DstWAS",type=string,JSONPath=`.spec.wasTargetType`
+// +kubebuilder:printcolumn:name="SrcDB",type=string,JSONPath=`.spec.dbSourceType`
+// +kubebuilder:printcolumn:name="DstDB",type=string,JSONPath=`.spec.dbTargetType`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
 type L2C struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
