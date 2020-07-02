@@ -238,14 +238,12 @@ func (r *ReconcileL2CRun) Reconcile(request reconcile.Request) (reconcile.Result
 			// Status: True --> succeeded
 			case corev1.ConditionTrue:
 				l2crun.Status.Conditions[i].Status = l2cv1.StatusSucceeded
-				break
 			// Status: False --> failed
 			case corev1.ConditionFalse:
 				l2crun.Status.Conditions[i].Status = l2cv1.StatusFailed
 				failedPhase = phase
 				failOccurred = true
 				allSucceeded = false
-				break
 			// Status: Unknown --> running/pending - see Reason
 			case corev1.ConditionUnknown:
 				if trCond.Reason == "Running" {
@@ -257,7 +255,6 @@ func (r *ReconcileL2CRun) Reconcile(request reconcile.Request) (reconcile.Result
 				currentRunning = phase
 				currentMessage = l2crun.Status.Conditions[i].Message
 				allSucceeded = false
-				break
 			default:
 				reqLogger.Error(errors.New("unknown taskrun status"), "Unknown taskrun status "+string(trCond.Status))
 			}
@@ -364,19 +361,23 @@ func initStatusField(cr *l2cv1.L2CRun) bool {
 		tobeInserted := phases
 
 		// Delete unnecessary fields
-		for curIdx, curCond := range cr.Status.Conditions {
+		curIdx := 0
+		for _, curCond := range cr.Status.Conditions {
 			found := -1
-			for desIdx, desCond := range tobeInserted {
+			desIdx := 0
+			for _, desCond := range tobeInserted {
 				if curCond.Type == desCond {
 					found = desIdx
 					tobeInserted = append(tobeInserted[:desIdx], tobeInserted[desIdx+1:]...)
-					desIdx = desIdx - 1
+					desIdx--
 				}
+				desIdx++
 			}
 			if found < 0 {
 				cr.Status.Conditions = append(cr.Status.Conditions[:curIdx], cr.Status.Conditions[curIdx+1:]...)
-				curIdx = curIdx - 1
+				curIdx--
 			}
+			curIdx++
 		}
 
 		// Fill necessary fields
