@@ -145,7 +145,7 @@ func main() {
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
 
-	CreateSonarqube(ctx)
+	addSonar()
 
 	log.Info("Starting the Cmd.")
 
