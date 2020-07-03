@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1alpha1
+kind: ClusterTask
+metadata:
+  name: l2c-deploy-db
+spec:
+  params:
+  - name: CM_NAME
+    description: ConfigMap name conatining TemplateInstance
+  - name: DO_MIGRATE_DB
+    description: Whether or not to migrate DB (TRUE/FALSE)
+    default: 'TRUE'
+  - name: WAIT_UNTIL_RUNNING
+    description: Wait until db gets into running state
+    default: 'TRUE'
+  steps:
+  - name: deploy-db
+    image: 172.22.11.2:30500/l2c-db-deployer:0.0.1
+    imagePullPolicy: Always
+    env:
+    - name: DO_MIGRATE_DB
+      value: $(params.DO_MIGRATE_DB)
+    - name: WAIT_UNTIL_RUNNING
+      value: $(params.WAIT_UNTIL_RUNNING)
+    - name: CONFIGMAP_NAME
+      value: $(params.CM_NAME)
