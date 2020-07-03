@@ -16,3 +16,10 @@ const (
 	LabelL2cRunName  = "l2crun.tmax.io/name"
 	LabelL2cRunPhase = "l2crun.tmax.io/phase"
 )
+
+const (
+	KeyDbPvc    = "db-pvc.yaml"
+	KeyDbSvc    = "db-svc.yaml"
+	KeyDbSecret = "db-secret.yaml"
+	KeyDbDeploy = "db-deploy.yaml"
+)

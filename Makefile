@@ -6,6 +6,9 @@ VERSION       ?= 0.0.1
 PACKAGE_NAME  = l2c-operator
 OPERATOR_IMG  = $(REGISTRY)/$(PACKAGE_NAME):$(VERSION)
 
+DB_DEPLOYER_NAME = l2c-db-deployer
+DB_DEPLOYER_IMG  = $(REGISTRY)/$(DB_DEPLOYER_NAME):$(VERSION)
+
 BIN = ./build/_output/bin
 
 BUILD_FLAG  = -gcflags all=-trimpath=/home/sunghyun/dev -asmflags all=-trimpath=/home/sunghyun/dev
@@ -24,17 +27,23 @@ gen:
 
 
 .PHONY: build build-operator
-build: build-operator
+build: build-operator build-db-deployer
 
 build-operator:
 	$(SDK) build $(OPERATOR_IMG)
 
+build-db-deployer: cmd/db-deployer
+	CGO_ENABLED=0 go build -o $(BIN)/l2c-db-deployer $(BUILD_FLAG) ./$<
+	docker build -f build/Dockerfile.db-deployer -t $(DB_DEPLOYER_IMG) .
 
-.PHONY: push push-operator
-push: push-operator
+.PHONY: push push-operator push-db-deployer
+push: push-operator push-db-deployer
 
 push-operator:
 	docker push $(OPERATOR_IMG)
+
+push-db-deployer:
+	docker push $(DB_DEPLOYER_IMG)
 
 
 .PHONY: test test-gen save-sha-gen compare-sha-gen test-verify save-sha-mod compare-sha-mod verify test-unit test-lint
