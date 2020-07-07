@@ -4,7 +4,7 @@ metadata:
   name: example-l2c
 spec:
   projectName: wildfly-maven-sample-app
-  accessCode: ''
+  accessCode: tmax1234
   gitUrl: https://github.com/sunghyunkim3/TomcatMavenApp
   gitRevision: master
   imageUrl: 172.22.11.2:30500/wildfly-maven-sample-app

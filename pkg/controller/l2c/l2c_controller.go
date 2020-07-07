@@ -2,15 +2,12 @@ package l2c
 
 import (
 	"context"
-	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -24,6 +21,7 @@ import (
 	"tmax.io/l2c-operator/internal/schemes"
 	"tmax.io/l2c-operator/internal/utils"
 	l2cv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
+	tmaxv1alpha1 "tmax.io/l2c-operator/pkg/apis/tmax/v1alpha1"
 
 	sonarapis "github.com/taejune/sonar-client-go/apis"
 	sonarerrors "github.com/taejune/sonar-client-go/errors"
@@ -64,6 +62,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner L2C
+	err = c.Watch(&source.Kind{Type: &tmaxv1alpha1.VSCode{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &l2cv1.L2C{},
+	})
+	if err != nil {
+		return err
+	}
+
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &l2cv1.L2C{},
@@ -146,13 +152,29 @@ func (r *ReconcileL2C) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// TODO: SonarQube Project
 	// TODO: If sonar project is ready (status.sonar-project-id exists) --> create all children objects
 
-	proj := sonarschemes.NewProject(l2c.Spec.ProjectName, l2c.Spec.ProjectName, l2c.Spec.GitUrl, sonarschemes.JAVA, sonarschemes.MAVEN)
+	proj := sonarschemes.NewProject(l2c.Spec.ProjectName, l2c.Spec.ProjectName, l2c.Spec.GitUrl, sonarschemes.Java, sonarschemes.MAVEN)
 	err = sonarapis.CreateProject(proj)
 	if err != nil {
 		if !sonarerrors.IsAlreadyExists(err) {
 			reqLogger.Error(err, "Failed to create project not caused by already exist")
 			return reconcile.Result{}, err
 		}
+	}
+
+	vscode := &tmaxv1alpha1.VSCode{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      l2c.Name + "-vscode",
+		Namespace: l2c.Namespace,
+	}, vscode)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			vscode = r.vscodeCr(l2c)
+			err = r.client.Create(context.TODO(), vscode)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		return reconcile.Result{}, err
 	}
 
 	// L2c's children
@@ -267,221 +289,12 @@ func (r *ReconcileL2C) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, nil
 	}
 
-	// ------------------------------------------------------------------------
-	svc := &corev1.Service{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2c.Name, Namespace: l2c.Namespace}, svc)
-	if err != nil && errors.IsNotFound(err) {
-		vscodeSvc := r.serviceForL2C(l2c)
-		reqLogger.Info("Creating a new Service", "Service.Namespace", vscodeSvc.Namespace, "Service.Name", vscodeSvc.Name)
-		err = r.client.Create(context.TODO(), vscodeSvc)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-	// ------------------------------------------------------------------------
-	configmap := &corev1.ConfigMap{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2c.Name, Namespace: l2c.Namespace}, configmap)
-	if err != nil && errors.IsNotFound(err) {
-		vscodeCm := r.configMapForL2C(l2c)
-		reqLogger.Info("Creating a new ConfigMap", "ConfigMap.Namespace", vscodeCm.Namespace, "ConfigMap.Name", vscodeCm.Name)
-		err = r.client.Create(context.TODO(), vscodeCm)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-	// ------------------------------------------------------------------------
-	secret := &corev1.Secret{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2c.Name, Namespace: l2c.Namespace}, secret)
-	if err != nil && errors.IsNotFound(err) {
-		vscodeSecret := r.secretForL2C(l2c)
-		reqLogger.Info("Creating a new Secret", "Secret.Namespace", vscodeSecret.Namespace, "Secret.Name", vscodeSecret.Name)
-		err = r.client.Create(context.TODO(), vscodeSecret)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-	// ------------------------------------------------------------------------
-	deployment := &appsv1.Deployment{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2c.Name, Namespace: l2c.Namespace}, deployment)
-	if err != nil && errors.IsNotFound(err) {
-		vscodeDep := r.deploymentForL2C(l2c)
-		reqLogger.Info("Creating a new Deployment", "Deployment.Namespace", vscodeDep.Namespace, "Deployment.Name", vscodeDep.Name)
-		err = r.client.Create(context.TODO(), vscodeDep)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-
 	// Set status as ready
 	if err = r.setStatus(l2c, l2cv1.StatusReady, "All child objects are ready"); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, nil
-}
-
-// labelsForMemcached returns the labels for selecting the resources
-// belonging to the given memcached CR name.
-func labelsForL2C(name string) map[string]string {
-	return map[string]string{"app": "l2c", "l2c_cr": name}
-}
-
-// deploymentForL2C returns a memcached Deployment object
-func (r *ReconcileL2C) deploymentForL2C(cr *l2cv1.L2C) *appsv1.Deployment {
-	ls := labelsForL2C(cr.Name)
-
-	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: ls,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: ls,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "vscode",
-							Image: "192.168.6.110:5000/tmax/code-server:3.3.1",
-							Env: []corev1.EnvVar{
-								{
-									Name:  "GIT_URL",
-									Value: cr.Spec.GitUrl,
-								},
-								{
-									Name:  "PROJECT_NAME",
-									Value: "TEST0",
-								},
-							},
-							Lifecycle: &corev1.Lifecycle{
-								PostStart: &corev1.Handler{
-									Exec: &corev1.ExecAction{
-										Command: []string{
-											"/bin/bash",
-											"-c",
-											"git clone ${GIT_URL} ~/project/${PROJECT_NAME}; cp /tmp/settings.json /home/coder/.local/share/code-server/User/settings.json",
-										},
-									},
-								},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "settings-json-config",
-									MountPath: "/tmp/settings.json",
-									SubPath:   "settings.json",
-								},
-								{
-									Name:      "config-yaml-secret",
-									MountPath: "/home/coder/.config/code-server/config.yaml",
-									SubPath:   "config.yaml",
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "settings-json-config",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: cr.Name,
-									},
-								},
-							},
-						},
-						{
-							Name: "config-yaml-secret",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: cr.Name,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	// Set L2C instance as the owner and controller
-	controllerutil.SetControllerReference(cr, dep, r.scheme)
-	return dep
-}
-
-func (r *ReconcileL2C) serviceForL2C(cr *l2cv1.L2C) *corev1.Service {
-	labels := labelsForL2C(cr.Name)
-
-	svc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.ServiceSpec{
-			Type:     "LoadBalancer",
-			Selector: labels,
-			Ports: []corev1.ServicePort{
-				{
-					Port: 8080,
-					TargetPort: intstr.IntOrString{
-						IntVal: 8080,
-					},
-				},
-			},
-		},
-	}
-	// Set L2C instance as the owner and controller
-	controllerutil.SetControllerReference(cr, svc, r.scheme)
-	return svc
-}
-
-func (r *ReconcileL2C) configMapForL2C(cr *l2cv1.L2C) *corev1.ConfigMap {
-	labels := labelsForL2C(cr.Name)
-
-	svc := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Data: map[string]string{
-			"settings.json": fmt.Sprintf("{\n    \"sonarlint.connectedMode.connections.sonarqube\": [\n        {\n            \"serverUrl\": \"http://l2c-sonar\",\n            \"token\": \"e51f629418eab9c5e205a4caa3714854fff763c1\"\n         }\n    ],\n    \"sonarlint.connectedMode.project\": {\n        \"projectKey\": \"%s\"\n    },\n    \"java.semanticHighlighting.enabled\": true,\n    \"sonarlint.ls.javaHome\": \"/usr/lib/jvm/java-11-openjdk-amd64\",\n    \"java.home\": \"/usr/lib/jvm/java-11-openjdk-amd64\"\n}\n", cr.Spec.ProjectName),
-		},
-	}
-	// Set L2C instance as the owner and controller
-	controllerutil.SetControllerReference(cr, svc, r.scheme)
-	return svc
-}
-
-func (r *ReconcileL2C) secretForL2C(cr *l2cv1.L2C) *corev1.Secret {
-	labels := labelsForL2C(cr.Name)
-
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		StringData: map[string]string{
-			"config.yaml": fmt.Sprintf("bind-addr: 127.0.0.1:8080\nauth: password\npassword: %s\ncert: false", cr.Spec.AccessCode),
-		},
-		Type: "Opaque",
-	}
-	// Set L2C instance as the owner and controller
-	controllerutil.SetControllerReference(cr, secret, r.scheme)
-	return secret
 }
 
 func (r *ReconcileL2C) setStatus(cr *l2cv1.L2C, status l2cv1.Status, message string) error {

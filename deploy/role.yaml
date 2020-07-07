@@ -72,6 +72,8 @@ rules:
   - '*'
   - l2cs
   - l2cruns
+  - sonarqubes
+  - vscodes
   verbs:
   - create
   - delete
