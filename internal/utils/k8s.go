@@ -23,28 +23,21 @@ func CheckAndCreateObject(client client.Client, namespacedName types.NamespacedN
 	reqLogger := log.Log.WithValues(resourceType+".Namespace", namespacedName.Namespace, resourceType+".Name", namespacedName.Name)
 
 	var typedObj runtime.Object
-	switch obj.(type) {
+	switch o := obj.(type) {
 	case *corev1.Service:
-		typedObj = obj.(*corev1.Service)
-		break
+		typedObj = o
 	case *corev1.ConfigMap:
-		typedObj = obj.(*corev1.ConfigMap)
-		break
+		typedObj = o
 	case *corev1.ServiceAccount:
-		typedObj = obj.(*corev1.ServiceAccount)
-		break
+		typedObj = o
 	case *rbacv1.RoleBinding:
-		typedObj = obj.(*rbacv1.RoleBinding)
-		break
+		typedObj = o
 	case *tektonv1.PipelineResource:
-		typedObj = obj.(*tektonv1.PipelineResource)
-		break
+		typedObj = o
 	case *tektonv1.Pipeline:
-		typedObj = obj.(*tektonv1.Pipeline)
-		break
+		typedObj = o
 	case *tektonv1.PipelineRun:
-		typedObj = obj.(*tektonv1.PipelineRun)
-		break
+		typedObj = o
 	default:
 		err := errors.New("Unsupported type " + resourceType)
 		reqLogger.Error(err, "Unsupported type attempted to be created")

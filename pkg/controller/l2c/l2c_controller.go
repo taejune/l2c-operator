@@ -272,6 +272,9 @@ func (r *ReconcileL2C) Reconcile(request reconcile.Request) (reconcile.Result, e
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2c.Name, Namespace: l2c.Namespace}, svc)
 	if err != nil && errors.IsNotFound(err) {
 		vscodeSvc := r.serviceForL2C(l2c)
+		if err := controllerutil.SetControllerReference(l2c, vscodeSvc, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
 		reqLogger.Info("Creating a new Service", "Service.Namespace", vscodeSvc.Namespace, "Service.Name", vscodeSvc.Name)
 		err = r.client.Create(context.TODO(), vscodeSvc)
 		if err != nil {
@@ -285,6 +288,9 @@ func (r *ReconcileL2C) Reconcile(request reconcile.Request) (reconcile.Result, e
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2c.Name, Namespace: l2c.Namespace}, configmap)
 	if err != nil && errors.IsNotFound(err) {
 		vscodeCm := r.configMapForL2C(l2c)
+		if err := controllerutil.SetControllerReference(l2c, vscodeCm, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
 		reqLogger.Info("Creating a new ConfigMap", "ConfigMap.Namespace", vscodeCm.Namespace, "ConfigMap.Name", vscodeCm.Name)
 		err = r.client.Create(context.TODO(), vscodeCm)
 		if err != nil {
@@ -298,6 +304,9 @@ func (r *ReconcileL2C) Reconcile(request reconcile.Request) (reconcile.Result, e
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2c.Name, Namespace: l2c.Namespace}, secret)
 	if err != nil && errors.IsNotFound(err) {
 		vscodeSecret := r.secretForL2C(l2c)
+		if err := controllerutil.SetControllerReference(l2c, vscodeSecret, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
 		reqLogger.Info("Creating a new Secret", "Secret.Namespace", vscodeSecret.Namespace, "Secret.Name", vscodeSecret.Name)
 		err = r.client.Create(context.TODO(), vscodeSecret)
 		if err != nil {
@@ -311,6 +320,9 @@ func (r *ReconcileL2C) Reconcile(request reconcile.Request) (reconcile.Result, e
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: l2c.Name, Namespace: l2c.Namespace}, deployment)
 	if err != nil && errors.IsNotFound(err) {
 		vscodeDep := r.deploymentForL2C(l2c)
+		if err := controllerutil.SetControllerReference(l2c, vscodeDep, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
 		reqLogger.Info("Creating a new Deployment", "Deployment.Namespace", vscodeDep.Namespace, "Deployment.Name", vscodeDep.Name)
 		err = r.client.Create(context.TODO(), vscodeDep)
 		if err != nil {
@@ -415,8 +427,6 @@ func (r *ReconcileL2C) deploymentForL2C(cr *l2cv1.L2C) *appsv1.Deployment {
 			},
 		},
 	}
-	// Set L2C instance as the owner and controller
-	controllerutil.SetControllerReference(cr, dep, r.scheme)
 	return dep
 }
 
@@ -442,8 +452,6 @@ func (r *ReconcileL2C) serviceForL2C(cr *l2cv1.L2C) *corev1.Service {
 			},
 		},
 	}
-	// Set L2C instance as the owner and controller
-	controllerutil.SetControllerReference(cr, svc, r.scheme)
 	return svc
 }
 
@@ -460,8 +468,6 @@ func (r *ReconcileL2C) configMapForL2C(cr *l2cv1.L2C) *corev1.ConfigMap {
 			"settings.json": fmt.Sprintf("{\n    \"sonarlint.connectedMode.connections.sonarqube\": [\n        {\n            \"serverUrl\": \"http://l2c-sonar\",\n            \"token\": \"e51f629418eab9c5e205a4caa3714854fff763c1\"\n         }\n    ],\n    \"sonarlint.connectedMode.project\": {\n        \"projectKey\": \"%s\"\n    },\n    \"java.semanticHighlighting.enabled\": true,\n    \"sonarlint.ls.javaHome\": \"/usr/lib/jvm/java-11-openjdk-amd64\",\n    \"java.home\": \"/usr/lib/jvm/java-11-openjdk-amd64\"\n}\n", cr.Spec.ProjectName),
 		},
 	}
-	// Set L2C instance as the owner and controller
-	controllerutil.SetControllerReference(cr, svc, r.scheme)
 	return svc
 }
 
@@ -479,8 +485,6 @@ func (r *ReconcileL2C) secretForL2C(cr *l2cv1.L2C) *corev1.Secret {
 		},
 		Type: "Opaque",
 	}
-	// Set L2C instance as the owner and controller
-	controllerutil.SetControllerReference(cr, secret, r.scheme)
 	return secret
 }
 
