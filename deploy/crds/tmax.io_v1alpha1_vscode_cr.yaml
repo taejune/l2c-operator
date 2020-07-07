@@ -1,0 +1,7 @@
+apiVersion: tmax.io/v1alpha1
+kind: VSCode
+metadata:
+  name: example-vscode
+spec:
+  # Add fields here
+  size: 3

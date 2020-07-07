@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -55,7 +54,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner Sonarqube
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &tmaxv1alpha1.Sonarqube{},
+	})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &tmaxv1alpha1.Sonarqube{},
 	})
@@ -108,11 +115,7 @@ func (r *ReconcileSonarqube) Reconcile(request reconcile.Request) (reconcile.Res
 	if err != nil {
 		if errors.IsNotFound(err) {
 			reqLogger.Info("Create sonarqube Service for L2C")
-			svc = newServiceForSonar(cr)
-			// Set Sonarqube instance as the owner and controller
-			if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
-				return reconcile.Result{}, err
-			}
+			svc = r.newServiceForSonar(cr)
 			err := r.client.Create(context.TODO(), svc)
 			if err != nil {
 				reqLogger.Error(err, "Failed to create service for L2C sonarqube")
@@ -135,11 +138,7 @@ func (r *ReconcileSonarqube) Reconcile(request reconcile.Request) (reconcile.Res
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, dep)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new deployment
-		dep = newDeploymentForSonar(cr)
-		// Set Sonarqube instance as the owner and controller
-		if err := controllerutil.SetControllerReference(cr, dep, r.scheme); err != nil {
-			return reconcile.Result{}, err
-		}
+		dep = r.newDeploymentForSonar(cr)
 		reqLogger.Info("Creating a new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
 		err = r.client.Create(context.TODO(), dep)
 		if err != nil {

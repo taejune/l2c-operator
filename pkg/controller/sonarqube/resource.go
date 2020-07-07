@@ -5,10 +5,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	tmaxv1alpha1 "tmax.io/l2c-operator/pkg/apis/tmax/v1alpha1"
 )
 
-func newServiceForSonar(cr *tmaxv1alpha1.Sonarqube) *corev1.Service {
+func (r *ReconcileSonarqube) newServiceForSonar(cr *tmaxv1alpha1.Sonarqube) *corev1.Service {
 	labels := labelsForSonar(cr.Name)
 
 	svc := &corev1.Service{
@@ -31,10 +32,11 @@ func newServiceForSonar(cr *tmaxv1alpha1.Sonarqube) *corev1.Service {
 		},
 	}
 
+	controllerutil.SetControllerReference(cr, svc, r.scheme)
 	return svc
 }
 
-func newDeploymentForSonar(cr *tmaxv1alpha1.Sonarqube) *appsv1.Deployment {
+func (r *ReconcileSonarqube) newDeploymentForSonar(cr *tmaxv1alpha1.Sonarqube) *appsv1.Deployment {
 	ls := labelsForSonar(cr.Name)
 
 	dep := &appsv1.Deployment{
@@ -64,6 +66,7 @@ func newDeploymentForSonar(cr *tmaxv1alpha1.Sonarqube) *appsv1.Deployment {
 		},
 	}
 
+	controllerutil.SetControllerReference(cr, dep, r.scheme)
 	return dep
 }
 
