@@ -43,6 +43,22 @@ func GetDbAppName(cr *l2cv1.L2C) string {
 	return cr.Name + "-db"
 }
 
+func GetDbPvcName(cr *l2cv1.L2C) string {
+	return GetDbAppName(cr) + "-pvc"
+}
+
+func GetDbSvcName(cr *l2cv1.L2C) string {
+	return GetDbAppName(cr) + "-svc"
+}
+
+func GetDbSecretName(cr *l2cv1.L2C) string {
+	return GetDbAppName(cr) + "-secret"
+}
+
+func GetDbDeployName(cr *l2cv1.L2C) string {
+	return GetDbAppName(cr) + "-deploy"
+}
+
 func GetDbTemplateInstanceName(cr *l2cv1.L2C) string {
 	return cr.Name + "-db-instance"
 }

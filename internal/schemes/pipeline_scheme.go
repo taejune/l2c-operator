@@ -1,11 +1,9 @@
 package schemes
 
 import (
-	"strings"
-
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"tmax.io/l2c-operator/internal/utils"
 	l2cv1 "tmax.io/l2c-operator/pkg/apis/tmax/v1"
 )
@@ -64,8 +62,6 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 						},
 						Params: []tektonv1.Param{
 							{Name: "CM_NAME", Value: tektonv1.ArrayOrString{StringVal: utils.GetConfigMapName(cr), Type: tektonv1.ParamTypeString}},
-							{Name: "DB_APP_NAME", Value: tektonv1.ArrayOrString{StringVal: utils.GetDbAppName(cr), Type: tektonv1.ParamTypeString}},
-							{Name: "DB_TYPE", Value: tektonv1.ArrayOrString{StringVal: strings.ToUpper(cr.Spec.DbTargetType), Type: tektonv1.ParamTypeString}},
 							{Name: "DO_MIGRATE_DB", Value: tektonv1.ArrayOrString{StringVal: "$(params.DB_MIGRATE)", Type: tektonv1.ParamTypeString}},
 						},
 						RunAfter: []string{string(l2cv1.PhaseAnalyze)},
@@ -89,7 +85,7 @@ func Pipeline(cr *l2cv1.L2C) (analyze *tektonv1.Pipeline, cicd *tektonv1.Pipelin
 							{Name: "d-type", Value: tektonv1.ArrayOrString{StringVal: "$(params.DB_TO)", Type: tektonv1.ParamTypeString}},
 							{Name: "d-sid", Value: tektonv1.ArrayOrString{StringVal: "$(params.DB_TO_USER)", Type: tektonv1.ParamTypeString}},
 							{Name: "d-port", Value: tektonv1.ArrayOrString{StringVal: "8629", Type: tektonv1.ParamTypeString}},
-							{Name: "d-ip", Value: tektonv1.ArrayOrString{StringVal: "$(params.L2C_NAME)-db-service", Type: tektonv1.ParamTypeString}},
+							{Name: "d-ip", Value: tektonv1.ArrayOrString{StringVal: utils.GetDbSvcName(cr), Type: tektonv1.ParamTypeString}},
 						},
 						RunAfter: []string{string(l2cv1.PhaseDbDeploy)},
 					},

@@ -1,0 +1,6 @@
+FROM scratch
+
+COPY build/_output/bin/l2c-db-deployer /l2c-db-deployer
+COPY build/bin /usr/local/bin
+
+CMD ["/l2c-db-deployer"]
